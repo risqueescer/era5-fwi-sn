@@ -1,0 +1,54 @@
+# METADATA
+organisation: Risque-ESCER
+data_source: ERA5
+spatial_domain: Can
+grid_resolution: 0.25,
+grid_type: "Original grid"
+
+# Directories
+project:
+  root_dir: .
+
+paths:
+  output_dir: output
+  logs_dir: logs
+  shp_dir: shp
+  
+  cds_era5_dir: output/cds_era5
+  masked_dir: output/masked
+  derived_vars_dir: output/derived_vars
+  fwi_inputs_dir: output/fwi_inputs
+  fire_season_indices_dir: output/fire_season_indices
+  fwi_sn_outputs_dir: output/fwi-sn
+
+  
+# CDS
+cds:
+  credentials: ~/.cdsapirc
+
+# MASK (for Canada)
+shp_can_name: gpr_limites_canada_wgs84.shp
+# List of utc hours to keep for solar noon method   
+utc_list: [15,16,17,18,19,20,21,22] # For Canada: keep UTC hours from 15 to 22
+
+# ERA5 download
+era5_download:
+  area: [88, 200, 38, 320]
+  day_lag: 6
+  variables:
+    - t2m
+    - d2m
+    - tp
+    - sd
+    - rsn
+    - u10
+    - v10
+
+# FWI
+fwi:
+  year_init: 1950
+  year_start: 1950
+  year_end: 2025
+  onset_method: TS
+  snow_threshold: 0.01
+  temperature_threshold: 5.0
