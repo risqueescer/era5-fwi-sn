@@ -87,7 +87,7 @@ python src/main.py
 ### Single year / partial range
 Override the year range from the command line without editing the config file:
 ```bash
-python src/main.py --year-start 2020 --year-end 2020
+python src/main.py --year-init 1950 --year-start 1950 --year-end 1950
 ```
 Note: FWI relies on the Drought Code (DC) carried over from the previous year ("overwintering"). If the previous year hasn't already been processed, the pipeline falls back to the standard DC spin-up values for that run rather than failing — useful for quick tests, but for scientifically valid output over a partial range, process years sequentially from `fwi.year_init` onward at least once.
 

@@ -1,5 +1,6 @@
 # CDSdownload.py
 from utils import is_current_year, get_last_date, save_netcdf # generics utils
+from paths import DataPaths
 from pathlib import Path
 from calendar import monthrange
 import numpy as np
@@ -40,17 +41,16 @@ class ERA5Download:
         config,
         cds_client=None,
     ):
+        paths = DataPaths(config) 
+        self.output_dir = paths.paths["cds_era5_dir"] 
+
         self.cds_client = cds_client
-        
-        self.output_dir = Path(config["paths"]["cds_era5_dir"])
 
         self.area = config["era5_download"]["area"]
     
         self.day_lag = config["era5_download"]["day_lag"]
     
         self.variables = config["era5_download"]["variables"]
-        
-        self.day_lag = config["era5_download"]["day_lag"]
         
 
     # ============================================================
@@ -208,31 +208,13 @@ class ERA5Download:
             year,
             month,
         )
+        if filepath.exists() and not overwrite:
 
-        if (
-            filepath.exists()
-            and not overwrite
-        ):
-            if not is_current_year(year,self.day_lag):
-                print(f"✓ Existing file (past year), skipping: {filepath.name}")
+            if self.file_is_complete(filepath, year, month):
+                print(f"✓ Complete file exists: {filepath.name}")
                 return filepath
-
-            if self.file_is_complete(
-                filepath,
-                year,
-                month,
-            ):
-                print(
-                    f"✓ Complete file exists:"
-                    f" {filepath.name}"
-                )
-                return filepath
-
-            print(
-                f"Removing incomplete file:"
-                f" {filepath.name}"
-            )
-
+    
+            print(f"Removing incomplete file: {filepath.name}")
             filepath.unlink()
 
         print(
