@@ -89,7 +89,23 @@ class ERA5Download:
     # ============================================================
     # DATASET CHECKING
     # ============================================================
-
+    def merge_expver(self, ds):
+        """Merge ERA5 expver streams (typically 1 and 5)."""
+    
+        if "expver" not in ds.dims:
+            return ds
+    
+        expvers = ds.expver.values
+        
+        if len(expvers) == 1:
+            return ds.isel(expver=0, drop=True)
+        
+        ds = (
+            ds.sel(expver=expvers[0])
+            .combine_first(ds.sel(expver=expvers[1])))
+    
+        return ds
+    
     def format_dataset(self, ds):
 
         if "valid_time" in ds:
@@ -100,9 +116,8 @@ class ERA5Download:
         if "number" in ds:
             ds = ds.drop_vars("number")
 
-        if "expver" in ds:
-            ds = ds.drop_vars("expver")
-
+        ds = self.merge_expver(ds)
+        
         return ds
 
     def expected_last_time(

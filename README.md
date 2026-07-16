@@ -108,7 +108,7 @@ python src/main.py
 Distributed under the MIT License. See the `LICENSE` file in the root directory for more details.
 
 ## How to cite
-Code: [Zenodo DOI — add after tagging the release used in the paper]
+Code: https://doi.org/10.5281/zenodo.21398765
 
 Dataset: see **Data Availability** below.
 

@@ -16,6 +16,7 @@ def daily_max_t2m(hourly_t2m_ds):
     return (daily_tmax)
 
 def daily_mean_snow_depth(sd_files,swe_files):
+    # provide snow value (sd or swe) in meters
     from pathlib import Path
     # Calculate daily mean snow depth or estimate it 
     missing = [f for f in sd_files if not Path(f).exists()]
@@ -23,15 +24,13 @@ def daily_mean_snow_depth(sd_files,swe_files):
     if len(missing) == 0:
         sd_ds = xr.open_mfdataset(sd_files, combine="by_coords")
         # convert from cm to meter
-        sd_ds["SD"] = sd_ds["SD"] / 100.0  # cm → m
-    
+        sd_ds["SD"] = sd_ds["SD"] #/ 100.0  # cm → m
     else:
         print("No SD data, using SWE instead")
         SNOW_DENSITY = 100  # kg/m3 (assumption)
         
-        
         swe_ds = xr.open_mfdataset(swe_files, combine="by_coords")
-        swe = swe_ds["SWE"] / 1000.0  # mm → m
+        swe = swe_ds["SWE"] #/ 1000.0  # mm → m
         sd = swe * (1000 / SNOW_DENSITY)
         sd_ds = sd.to_dataset(name="SD")
     
@@ -41,7 +40,8 @@ def daily_mean_snow_depth(sd_files,swe_files):
 
 def snow_condition(sd_dmean):
     sd_JF = sd_dmean.sel(time=sd_dmean.time.dt.month.isin([1,2])) # Only keep snow for Jan + Feb
-    sd_cond_JF = xr.where(sd_JF >= 0.10,1,0)# mask sd_JF where snow < 0.10 m (condition for Onset calculation)
+    #sd_cond_JF = xr.where(sd_JF >= 0.10,1,0)# mask sd_JF where snow < 0.10 m (condition for Onset calculation)
+    sd_cond_JF = xr.where(sd_JF >= 0.10, 1, 0).where(~np.isnan(sd_JF))
     return (sd_cond_JF)
 
     
@@ -56,6 +56,7 @@ def run_fwi(config,years, year_init,utc_list):
     paths = DataPaths()
     
     day_lag = config["era5_download"]["day_lag"]
+    snow_th = config["fwi"]["snow_threshold"]
     # ----------------------------------
     # LOOP YEARS
     # ----------------------------------
@@ -124,12 +125,14 @@ def run_fwi(config,years, year_init,utc_list):
             dcf_py_ds = xr.open_dataset(dcf_py_path)
             dcf_py_available = True
             
-        # Format longitudes for each dataset (should be done when preparing dataset)
-        h_t2m_ds = io.format_longitudes(h_t2m_ds)
-        h_rh_ds = io.format_longitudes(h_rh_ds)
-        h_ws_ds = io.format_longitudes(h_ws_ds)
-        h_prcp_ds = io.format_longitudes(h_prcp_ds)
-        
+        # WinterOnset of Previous Year
+        wonset_py_path = paths.fire_season_indices('WinterOnset', year - 1)
+        wonset_py_available = False
+        if wonset_py_path.exists():
+            wonset_py_ds = xr.open_dataset(wonset_py_path)
+            wonset_py = wonset_py_ds["WinterOnset"].values
+            wonset_py_available = True
+            
         # Extract daily total precipitation - DTP - at specific UTC hours
         # First get the number of complete days (24hrs) in file
         last_24h_day = last_complete_day(h_prcp_ds)
@@ -152,7 +155,6 @@ def run_fwi(config,years, year_init,utc_list):
         
         # 2. Daily mean snow depth
         sd_dmean_da = daily_mean_snow_depth(sd_files,swe_files)
-        sd_dmean_da = io.format_longitudes(sd_dmean_da)
         sd_cond_JF = snow_condition(sd_dmean_da)
         nb_days_sd_cond = len(sd_cond_JF.time)
         sd_cond_percent_da = (
@@ -174,7 +176,6 @@ def run_fwi(config,years, year_init,utc_list):
                 prcp_files_py,
                 combine="by_coords"
             )
-            h_prcp_ds_py = io.format_longitudes(h_prcp_ds_py)
             last_24h_day_py = last_complete_day(h_prcp_ds_py)
             utc_dtp_ds_py = UTCDailyTotalPrecip().build_dtp_multi(h_prcp_ds_py,utc_list,last_24h_day_py)
             prcp_py_available = True
@@ -217,13 +218,17 @@ def run_fwi(config,years, year_init,utc_list):
     
                     dtp_py_ij=dtp_py[:, i, j] if prcp_py_available else None,
                     
+                    winter_onset_py_ij=wonset_py[i, j] if wonset_py_available else np.nan, 
+                    
                     sd_cond_percent_ij=sd_cond_percent[i, j],
     
                     onset_method="TS",
     
-                    snow_seuil=0.01,
+                    snow_th=snow_th,
     
-                    temp_seuil=5.0,
+                    temp_th_onset=12.0, # Temperature threshold for Onset
+                    
+                    temp_th_wonset=5.0, # Temperature threshold for WinterOnset
                 )
     
                 onset[i, j] = indices["Onset"]
@@ -246,7 +251,56 @@ def run_fwi(config,years, year_init,utc_list):
         
         winter_rain_ds = xr.Dataset(coords = {'lat': (['lat'], lats),'lon': (['lon'], lons)})
         winter_rain_ds["WinterRain"] = (['lat', 'lon'],  winter_rain)
-    
+        
+        # Format and save Fire Season Indices datasets
+        onset_path = paths.fire_season_indices('Onset', year)
+        winter_onset_path = paths.fire_season_indices('WinterOnset', year)
+        winter_rain_path = paths.fire_season_indices('WinterRain', year)
+        fsl_path = paths.fire_season_indices('FSL', year)
+        
+        onset_path.parent.mkdir(parents=True, exist_ok=True)
+        winter_onset_path.parent.mkdir(parents=True, exist_ok=True)
+        winter_rain_path.parent.mkdir(parents=True, exist_ok=True)
+        fsl_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Fire Season Indices
+        onset_ds = io.format_and_save(
+            ds=onset_ds,
+            variable_raw="Onset",
+            variable_final="Onset",
+            frequency="yearly",
+            config=config,
+            out_path=onset_path,
+            save_netcdf_func=save_netcdf,
+        )
+        winter_onset_ds = io.format_and_save(
+            ds=winter_onset_ds,
+            variable_raw="WinterOnset",
+            variable_final="WinterOnset",
+            frequency="yearly",
+            config=config,
+            out_path=winter_onset_path,
+            save_netcdf_func=save_netcdf,
+        )
+        winter_rain_ds = io.format_and_save(
+            ds=winter_rain_ds,
+            variable_raw="WinterRain",
+            variable_final="WinterRain",
+            frequency="yearly",
+            config=config,
+            out_path=winter_rain_path,
+            save_netcdf_func=save_netcdf,
+        )
+        fsl_ds = io.format_and_save(
+            ds=fsl_ds,
+            variable_raw="FSL",
+            variable_final="FSL",
+            frequency="yearly",
+            config=config,
+            out_path=fsl_path,
+            save_netcdf_func=save_netcdf,
+        )
+
         print("STEP 2: FWI")
         
         # Read input values at solar noon
@@ -321,10 +375,6 @@ def run_fwi(config,years, year_init,utc_list):
         # Fire Season Indices
         dsrc_path = paths.fire_season_indices('DSRc', year)
         dcf_path = paths.fire_season_indices('DCf', year)
-        onset_path = paths.fire_season_indices('Onset', year)
-        winter_onset_path = paths.fire_season_indices('WinterOnset', year)
-        winter_rain_path = paths.fire_season_indices('WinterRain', year)
-        fsl_path = paths.fire_season_indices('FSL', year)
         
         # Out dir fwi & fire_season_indices:
         fwi_path.parent.mkdir(parents=True, exist_ok=True)
@@ -337,15 +387,11 @@ def run_fwi(config,years, year_init,utc_list):
         
         dsrc_path.parent.mkdir(parents=True, exist_ok=True)
         dcf_path.parent.mkdir(parents=True, exist_ok=True)
-        onset_path.parent.mkdir(parents=True, exist_ok=True)
-        winter_onset_path.parent.mkdir(parents=True, exist_ok=True)
-        winter_rain_path.parent.mkdir(parents=True, exist_ok=True)
-        fsl_path.parent.mkdir(parents=True, exist_ok=True)
-
+        
         # Save datasets to NetCDF files
         # FWI components
-        fwi = io.format_and_save(
-            ds=fwi,
+        fwi_ds = io.format_and_save(
+            ds=fwi_ds,
             variable_raw="FWI",
             variable_final="FWI",
             frequency="daily",
@@ -354,8 +400,8 @@ def run_fwi(config,years, year_init,utc_list):
             save_netcdf_func=save_netcdf,
         )
         
-        ffmc = io.format_and_save(
-            ds=ffmc,
+        ffmc_ds = io.format_and_save(
+            ds=ffmc_ds,
             variable_raw="FFMC",
             variable_final="FFMC",
             frequency="daily",
@@ -363,8 +409,8 @@ def run_fwi(config,years, year_init,utc_list):
             out_path=ffmc_path,
             save_netcdf_func=save_netcdf,
         )
-        dmc = io.format_and_save(
-            ds=dmc,
+        dmc_ds = io.format_and_save(
+            ds=dmc_ds,
             variable_raw="DMC",
             variable_final="DMC",
             frequency="daily",
@@ -372,8 +418,8 @@ def run_fwi(config,years, year_init,utc_list):
             out_path=dmc_path,
             save_netcdf_func=save_netcdf,
         )
-        dc = io.format_and_save(
-            ds=dc,
+        dc_ds = io.format_and_save(
+            ds=dc_ds,
             variable_raw="DC",
             variable_final="DC",
             frequency="daily",
@@ -381,8 +427,8 @@ def run_fwi(config,years, year_init,utc_list):
             out_path=dc_path,
             save_netcdf_func=save_netcdf,
         )
-        isi = io.format_and_save(
-            ds=isi,
+        isi_ds = io.format_and_save(
+            ds=isi_ds,
             variable_raw="ISI",
             variable_final="ISI",
             frequency="daily",
@@ -390,8 +436,8 @@ def run_fwi(config,years, year_init,utc_list):
             out_path=isi_path,
             save_netcdf_func=save_netcdf,
         )
-        bui = io.format_and_save(
-            ds=bui,
+        bui_ds = io.format_and_save(
+            ds=bui_ds,
             variable_raw="BUI",
             variable_final="BUI",
             frequency="daily",
@@ -399,8 +445,8 @@ def run_fwi(config,years, year_init,utc_list):
             out_path=bui_path,
             save_netcdf_func=save_netcdf,
         )
-        dsr = io.format_and_save(
-            ds=dsr,
+        dsr_ds = io.format_and_save(
+            ds=dsr_ds,
             variable_raw="DSR",
             variable_final="DSR",
             frequency="daily",
@@ -408,8 +454,8 @@ def run_fwi(config,years, year_init,utc_list):
             out_path=dsr_path,
             save_netcdf_func=save_netcdf,
         )
-        dsrc = io.format_and_save(
-            ds=dsrc,
+        dsrc_ds = io.format_and_save(
+            ds=dsrc_ds,
             variable_raw="DSRc",
             variable_final="DSRc",
             frequency="yearly",
@@ -417,8 +463,8 @@ def run_fwi(config,years, year_init,utc_list):
             out_path=dsrc_path,
             save_netcdf_func=save_netcdf,
         )
-        dcf = io.format_and_save(
-            ds=dcf,
+        dcf_ds = io.format_and_save(
+            ds=dcf_ds,
             variable_raw="DCf",
             variable_final="DCf",
             frequency="yearly",
@@ -426,58 +472,20 @@ def run_fwi(config,years, year_init,utc_list):
             out_path=dcf_path,
             save_netcdf_func=save_netcdf,
         )
-        
-        # Fire Season Indices
-        onset = io.format_and_save(
-            ds=onset,
-            variable_raw="Onset",
-            variable_final="Onset",
-            frequency="yearly",
-            config=config,
-            out_path=onset_path,
-            save_netcdf_func=save_netcdf,
-        )
-        winter_onset = io.format_and_save(
-            ds=winter_onset,
-            variable_raw="WinterOnset",
-            variable_final="WinterOnset",
-            frequency="yearly",
-            config=config,
-            out_path=winter_onset_path,
-            save_netcdf_func=save_netcdf,
-        )
-        winter_rain = io.format_and_save(
-            ds=winter_rain,
-            variable_raw="WinterRain",
-            variable_final="WinterRain",
-            frequency="yearly",
-            config=config,
-            out_path=winter_rain_path,
-            save_netcdf_func=save_netcdf,
-        )
-        fsl = io.format_and_save(
-            ds=fsl,
-            variable_raw="FSL",
-            variable_final="FSL",
-            frequency="yearly",
-            config=config,
-            out_path=fsl_path,
-            save_netcdf_func=save_netcdf,
-        )
     
     return {year:{
-        "FWI": fwi,
-        "FFMC": ffmc,
-        "DMC": dmc,
-        "DC": dc,
-        "ISI": isi,
-        "BUI": bui,
-        "DSR": dsr,
-        "DSRc": dsrc,
-        "DCf": dcf,
-        "Onset": onset,
-        "WinterOnset": winter_onset,
-        "FSL": fsl,
-        "WinterRain": winter_rain,
+        "FWI": fwi_ds,
+        "FFMC": ffmc_ds,
+        "DMC": dmc_ds,
+        "DC": dc_ds,
+        "ISI": isi_ds,
+        "BUI": bui_ds,
+        "DSR": dsr_ds,
+        "DSRc": dsrc_ds,
+        "DCf": dcf_ds,
+        "Onset": onset_ds,
+        "WinterOnset": winter_onset_ds,
+        "FSL": fsl_ds,
+        "WinterRain": winter_rain_ds,
         }
     }
