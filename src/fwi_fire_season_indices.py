@@ -16,14 +16,15 @@ class FireSeasonIndices:
     @staticmethod
     def calculate_onset(
         onset_method,
-        snow_seuil,
+        snow_th,
         sd_cond_percent_ij,
-        temp_seuil,
+        temp_th,
         t2m_ij,
         sd_ij,
     ):
         """
-        Returns first valid fire season day index (1-based).
+        Returns first valid fire season day (julian day = index + 3 + 1 (to switch from index to julian day).
+        
         """
 
         len_time = len(t2m_ij)
@@ -34,11 +35,11 @@ class FireSeasonIndices:
         if onset_method == "T":
             for nt in range(len_time - 2):
                 if (
-                    t2m_ij[nt] > temp_seuil
-                    and t2m_ij[nt + 1] > temp_seuil
-                    and t2m_ij[nt + 2] > temp_seuil
+                    t2m_ij[nt] > temp_th
+                    and t2m_ij[nt + 1] > temp_th
+                    and t2m_ij[nt + 2] > temp_th
                 ):
-                    return nt + 3
+                    return nt + 3 + 1 # +1 to get julian day instead of index
             return np.nan
 
         # -------------------------
@@ -50,22 +51,22 @@ class FireSeasonIndices:
             for nt in range(len_time - 2):
 
                 temp_ok = (
-                    t2m_ij[nt] > temp_seuil
-                    and t2m_ij[nt + 1] > temp_seuil
-                    and t2m_ij[nt + 2] > temp_seuil
+                    t2m_ij[nt] > temp_th
+                    and t2m_ij[nt + 1] > temp_th
+                    and t2m_ij[nt + 2] > temp_th
                 )
 
                 if use_snow:
                     snow_ok = (
-                        sd_ij[nt] < snow_seuil
-                        and sd_ij[nt + 1] < snow_seuil
-                        and sd_ij[nt + 2] < snow_seuil
+                        sd_ij[nt] < snow_th
+                        and sd_ij[nt + 1] < snow_th
+                        and sd_ij[nt + 2] < snow_th
                     )
                 else:
                     snow_ok = True
 
                 if temp_ok and snow_ok:
-                    return nt + 3
+                    return nt + 3 + 1 # +1 to get julian day instead of index
 
             return np.nan
 
@@ -78,9 +79,9 @@ class FireSeasonIndices:
             for nt in range(len_time - 2):
 
                 temp_ok = (
-                    t2m_ij[nt] > temp_seuil
-                    and t2m_ij[nt + 1] > temp_seuil
-                    and t2m_ij[nt + 2] > temp_seuil
+                    t2m_ij[nt] > temp_th
+                    and t2m_ij[nt + 1] > temp_th
+                    and t2m_ij[nt + 2] > temp_th
                 )
 
                 if use_snow:
@@ -93,7 +94,7 @@ class FireSeasonIndices:
                     snow_ok = True
 
                 if temp_ok and snow_ok:
-                    return nt + 3
+                    return nt + 3 + 1 # +1 to get julian day instead of index
 
             return np.nan
 
@@ -111,14 +112,14 @@ class FireSeasonIndices:
                         and sd_ij[nt + 1] == 0
                         and sd_ij[nt + 2] == 0
                     ):
-                        return nt + 3
+                        return nt + 3 + 1
 
                 if (
-                    t2m_ij[nt] > temp_seuil
-                    and t2m_ij[nt + 1] > temp_seuil
-                    and t2m_ij[nt + 2] > temp_seuil
+                    t2m_ij[nt] > temp_th
+                    and t2m_ij[nt + 1] > temp_th
+                    and t2m_ij[nt + 2] > temp_th
                 ):
-                    return nt + 3
+                    return nt + 3 + 1# +1 to get julian day instead of index
 
             return np.nan
 
@@ -130,7 +131,7 @@ class FireSeasonIndices:
     @staticmethod
     def calculate_winter_onset(
         t2m_ij,
-        threshold=5.0,
+        temp_th,
         start_idx=240,
     ):
         """
@@ -139,11 +140,11 @@ class FireSeasonIndices:
 
         for nt in range(start_idx, len(t2m_ij) - 2):
             if (
-                t2m_ij[nt] < threshold
-                and t2m_ij[nt + 1] < threshold
-                and t2m_ij[nt + 2] < threshold
+                t2m_ij[nt] < temp_th
+                and t2m_ij[nt + 1] < temp_th
+                and t2m_ij[nt + 2] < temp_th
             ):
-                return nt + 3
+                return nt + 3 + 1
 
         return np.nan
 
@@ -189,7 +190,7 @@ class FireSeasonIndices:
         return tp_cy + tp_py
 
     # =========================================================
-    # OPTIONAL WRAPPER (recommended)
+    # WRAPPER compute_all
     # =========================================================
     @staticmethod
     def compute_all(
@@ -197,10 +198,12 @@ class FireSeasonIndices:
         sd_ij,
         dtp_cy_ij,
         dtp_py_ij,
+        winter_onset_py_ij,
         sd_cond_percent_ij,
         onset_method,
-        snow_seuil,
-        temp_seuil,
+        snow_th,
+        temp_th_onset,
+        temp_th_wonset,
         year=None,
     ):
         """
@@ -209,25 +212,22 @@ class FireSeasonIndices:
 
         onset = FireSeasonIndices.calculate_onset(
             onset_method,
-            snow_seuil,
+            snow_th,
             sd_cond_percent_ij,
-            temp_seuil,
+            temp_th_onset,
             t2m_ij,
             sd_ij,
         )
 
-        winter_onset = FireSeasonIndices.calculate_winter_onset(t2m_ij)
+        winter_onset = FireSeasonIndices.calculate_winter_onset(t2m_ij,temp_th_wonset)
 
         fsl = FireSeasonIndices.calculate_fsl(onset, winter_onset)
         
-        if dtp_py_ij is None:
+        if dtp_py_ij is None or np.isnan(winter_onset_py_ij):
             winter_rain = np.nan
         else:
             winter_rain = FireSeasonIndices.calculate_winter_rain(
-                dtp_cy_ij,
-                dtp_py_ij,
-                onset,
-                winter_onset,
+                dtp_cy_ij, dtp_py_ij, onset, winter_onset_py_ij,   # correct arg now
             )
 
         return {

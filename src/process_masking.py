@@ -1,6 +1,5 @@
 import os
 import xarray as xr
-
 from utils import get_last_date, remove_file, create_mask, save_netcdf # generics utils
 from era5_io import ERA5IO # input/output
 from paths import DataPaths
@@ -26,7 +25,6 @@ VAR_MAP = {
 # MAIN FUNCTION
 # ---------------------------------------------------------
 def run_masking(config,years):
-
     # -----------------------------
     # Setup
     # -----------------------------
@@ -39,7 +37,6 @@ def run_masking(config,years):
     # Shapefile and mask
     shp_path = paths.shp_path()
     reference_nc = paths.raw_hourly('t2m',years[0],1)
-    
     
     # Variables
     lst_v = config["era5_download"]["variables"]
@@ -106,9 +103,7 @@ def run_masking(config,years):
                 # LOAD + FORMAT
                 # -------------------------------------------------
                 ds = xr.open_dataset(i_download_path).load()
-                # optional formatting (keep if needed)
-                ds = io.format_ds(ds)
-
+                
                 print(f"Creating: {out_file_name}")
                 
                 # -------------------------------------------------
@@ -119,30 +114,33 @@ def run_masking(config,years):
                     mask
                 )
                 # -------------------------------------------------
+                # FORMAT LONGITUDES
+                # -------------------------------------------------
+                # Convert longitudes to negative if >=180
+                ds_masked = io.format_ds(ds_masked)
+
+                # -------------------------------------------------
                 # UNIT CONVERSIONS
                 # -------------------------------------------------
-                if v in ["sd", "tp", "sf", "sm"]:
-                    ds_masked[v] = ds_masked[v] * 1000
-                    ds_masked[v].attrs["units"] = "mm"
+                
 
-                elif v in ["t2m", "d2m"]:
+                if v in ["t2m", "d2m"]:
                     ds_masked[v] = ds_masked[v] - 273.15
                     ds_masked[v].attrs["units"] = "°C"
-
-                elif v == "sp":
-                    ds_masked[v] = ds_masked[v] / 100.0
-                    ds_masked[v].attrs["units"] = "hPa"
-
-                elif v == "ssr":
-                    ds_masked[v] = ds_masked[v] / 3600.0
-                    ds_masked[v].attrs["units"] = "W m**-2"
-
+                elif v in ["tp"]:
+                    # Change units from meters to mm
+                    ds_masked[v] = ds_masked[v] * 1000
+                    ds_masked[v].attrs["units"] = "mm"
+                else:
+                    # Units for relative humidity already in %
+                    # Units for uu and vv in m s**-1 (no change needed)
+                    # Units for rsn in kg m**-3 (no change needed)
+                    # Units for sd already in meters (no change needed)
+                    pass
                 
                 # -------------------------------------------------
                 # FORMAT AND SAVE
                 # -------------------------------------------------
-                # Convert longitudes to negative if >=180
-                ds_masked = io.format_longitudes(ds_masked)
                 # Save as NetCDF file
                 ds_masked = io.format_and_save(
                     ds=ds_masked,

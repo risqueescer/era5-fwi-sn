@@ -97,8 +97,7 @@ All region, method, and threshold choices are controlled by `config/config.yaml`
 spatial_domain: Can
 fwi:
   onset_method: TS      # T | TS | TS0 | ToS
-  snow_threshold: 0.01
-  temperature_threshold: 5.0
+  snow_threshold: 0.01 # Value to use for snow depth = 0
 ```
 Then run as usual:
 ```bash

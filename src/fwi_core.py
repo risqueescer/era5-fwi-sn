@@ -4,7 +4,7 @@ import pandas as pd
 import xarray as xr
 
 # =========================================================
-# CORE FWI PHYSICS (UNCHANGED)
+# CORE FWI PHYSICS
 # =========================================================
 class FWICLASS:
     def __init__(self, temp, rhum, wind, prcp):
@@ -181,10 +181,15 @@ def fwi_init_values(dcf_py_ij, wr_ij, bF, aF,
 # =========================================================
 
 def compute_fwi(t2m, rh, ws, dtp,
-                        onset, wonset,
-                        lats,lons,dates,
-                        year, year_init=1950,
-                        dcf_py=None, wr=None,
+                        onset, 
+                        wonset,
+                        lats,
+                        lons,
+                        dates,
+                        year, 
+                        year_init=1950,
+                        dcf_py=None, 
+                        wr=None,
                         method="sn_dc",
                         bF = 0.5,
                         aF = 1.0):
@@ -208,7 +213,7 @@ def compute_fwi(t2m, rh, ws, dtp,
             if np.isnan(onset[i, j]):
                 continue
 
-            start = int(onset[i, j]) - 1
+            start = int(onset[i, j]) - 1 # -1 to get the date index 
             stop = int(wonset[i, j]) - 2 if not np.isnan(wonset[i, j]) else nt - 1
 
             ffmc0, dmc0, dc0 = fwi_init_values(
@@ -229,9 +234,10 @@ def compute_fwi(t2m, rh, ws, dtp,
                 prcp = dtp[t, i, j]
 
                 fwisys = FWICLASS(temp, rhum, wind, prcp)
-
+                
                 if t == start:
                     ffmc0, dmc0, dc0 = ffmc0, dmc0, dc0
+                    
                 else:
                     ffmc0 = ffmc[t-1, i, j]
                     dmc0  = dmc[t-1, i, j]

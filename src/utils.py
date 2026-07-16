@@ -49,6 +49,7 @@ def save_netcdf(ds, path, complevel=5):
 def create_dir(paths):
     for p in paths:
         os.makedirs(p, exist_ok=True)
+        
 
 # =========================================================
 # MASKING
@@ -91,15 +92,3 @@ def create_mask(shp_path, reference_nc, lat_name="lat", lon_name="lon"):
     )
 
     return mask.to_dataset(name="region")
-
-# =========================================================
-# VALIDATION HELPERS
-# =========================================================
-def tb_error(code_execution_end=False):
-    import traceback
-    """Simple traceback printer (replacement for BASEFUN)."""
-    tb = traceback.format_exc()
-    print("ERROR TRACEBACK:\n", tb)
-
-    if code_execution_end:
-        print("Execution stopped due to error.")

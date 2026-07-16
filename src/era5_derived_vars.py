@@ -28,7 +28,7 @@ class DerivedVars:
             d2m_ds = d2m_ds.isel(time=slice(0, len_t2m))
 
         # -------------------------------------------------
-        # CONVERT TO KELVIN
+        # CONVERT DEGC TO KELVIN
         # -------------------------------------------------
         t2m = t2m_ds[t2m_var] + 273.15
         d2m = d2m_ds[d2m_var] + 273.15
@@ -45,39 +45,12 @@ class DerivedVars:
         rh = xr.where(rh > 100, 100, rh)
 
         ds = rh.to_dataset(name="RH")
-
+        ds["RH"].attrs = {
+            "units": "%",
+            "long_name": "Relative Humidity"
+        }
         t2m_ds.close()
         d2m_ds.close()
-
-        return ds
-
-    # ---------------------------------------------------------
-    # RAINFALL FRACTION / EFFECTIVE PRECIPITATION
-    # ---------------------------------------------------------
-    def computeRF(self, prcp_path, sf_path, prcp_var = "PRCP", sf_var = "SF"):
-
-        prcp_ds = xr.open_dataset(prcp_path)
-        sf_ds = xr.open_dataset(sf_path)
-
-        # align time
-        len_prcp = len(prcp_ds.time)
-        len_sf = len(sf_ds.time)
-
-        if len_prcp > len_sf:
-            prcp_ds = prcp_ds.isel(time=slice(0, len_sf))
-        elif len_sf > len_prcp:
-            sf_ds = sf_ds.isel(time=slice(0, len_prcp))
-
-        prcp = prcp_ds[prcp_var]
-        sf = sf_ds[sf_var]
-
-        rf = prcp - sf
-        rf = xr.where(rf < 0, 0, rf)
-
-        ds = rf.to_dataset(name="RF")
-
-        prcp_ds.close()
-        sf_ds.close()
 
         return ds
 
@@ -85,7 +58,8 @@ class DerivedVars:
     # SNOW DEPTH (physical conversion)
     # ---------------------------------------------------------
     def computeSD(self, swe_path, rsn_path, swe_var="SWE", rsn_var="RSN"):
-
+        # SWE need to be in meters (of snow water equivalent)
+        # Return SD in meters
         swe_ds = xr.open_dataset(swe_path)
         rsn_ds = xr.open_dataset(rsn_path)
 
@@ -98,14 +72,18 @@ class DerivedVars:
         elif len_rsn > len_swe:
             rsn_ds = rsn_ds.isel(time=slice(0, len_swe))
 
-        swe = swe_ds[swe_var] / 1000.0   # mm → m
+        swe = swe_ds[swe_var] #/ 1000.0   # mm → m
         rsn = rsn_ds[rsn_var]
 
         water_density = 1000.0
 
-        sd = swe * water_density / rsn * 100.0  # m → cm
+        sd = swe * water_density / rsn #* 100.0  # m → cm
 
         ds = sd.to_dataset(name="SD")
+        ds["SD"].attrs = {
+            "units": "m",
+            "long_name": "Estimated Snow Depth"
+        }
 
         swe_ds.close()
         rsn_ds.close()
@@ -129,6 +107,10 @@ class DerivedVars:
         ws = ws / 1000.0 * 3600.0
 
         ds = ws.to_dataset(name="WS")
+        ds["WS"].attrs = {
+            "units": "km h**-1",
+            "long_name": "Wind Speed"
+        }
 
         uu_ds.close()
         vv_ds.close()
@@ -156,7 +138,11 @@ class DerivedVars:
         wd = wd.where(wd >= 0, wd + 360)
 
         ds = wd.to_dataset(name="WD")
-
+        ds["WD"].attrs = {
+            "units": "degrees",
+            "long_name": "Wind Direction"
+        }
+        
         uu_ds.close()
         vv_ds.close()
 

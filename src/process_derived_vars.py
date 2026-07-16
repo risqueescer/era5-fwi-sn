@@ -10,14 +10,12 @@ from paths import DataPaths
 # ---------------------------------------------------------
 # CONSTANTS
 # ---------------------------------------------------------
-DERIVED_VARS = ["WS", "WD", "RH", "RF", "SD"]
+DERIVED_VARS = ["WS", "WD", "RH", "SD"]
 
 
 VAR_PATHS = {
     "T2m": "T2m",
     "TD2m": "TD2m",
-    "PRCP": "PRCP",
-    "SF": "SF",
     "SWE": "SWE",
     "RSN": "RSN",
     "UU": "UU",
@@ -99,8 +97,6 @@ def run_derived_vars(config,years):
                 paths_dict = {
                     "T2m": paths.masked_hourly('T2m', y, m),
                     "TD2m": paths.masked_hourly('TD2m', y, m),
-                    "PRCP": paths.masked_hourly('PRCP', y, m),
-                    "SF": paths.masked_hourly('SF', y, m),
                     "SWE": paths.masked_hourly('SWE', y, m),
                     "RSN": paths.masked_hourly('RSN', y, m),
                     "UU": paths.masked_hourly('UU', y, m),
@@ -112,9 +108,6 @@ def run_derived_vars(config,years):
                 # CHECK DEPENDENCIES
                 # -------------------------------------------------
                 if derived_var in ["RH"] and not (paths_dict["T2m"].exists() and paths_dict["TD2m"].exists()):
-                    continue
-
-                if derived_var in ["RF"] and not (paths_dict["SF"].exists() and paths_dict["PRCP"].exists()):
                     continue
 
                 if derived_var in ["SD"] and not (paths_dict["SWE"].exists() and paths_dict["RSN"].exists()):
@@ -130,9 +123,6 @@ def run_derived_vars(config,years):
                 # -------------------------------------------------
                 if derived_var == "RH":
                     ds = idx.computeRH(paths_dict["T2m"], paths_dict["TD2m"],"T2m","TD2m")
-
-                elif derived_var == "RF":
-                    ds = idx.computeRF(paths_dict["PRCP"], paths_dict["SF"],"PRCP","SF")
 
                 elif derived_var == "SD":
                     ds = idx.computeSD(paths_dict["SWE"], paths_dict["RSN"],"SWE","RSN")

@@ -49,13 +49,13 @@ class DataPaths:
 
         return (
             self.paths["masked_dir"]
-            / "era5"
             / variable
             / "hourly"
+            / str(year)
             / (
                 f"{self.organisation}_"
                 f"{self.data_source}_"
-                f"{variable}_"
+                f"{variable}_hourly_"
                 f"{year}{month:02d}_"
                 f"{self.domain}_0p25grid.nc"
             )
@@ -64,11 +64,11 @@ class DataPaths:
     def fwi_sn_daily(self,variable,year):
         return (
             self.paths["fwi_sn_outputs_dir"]
-            / variable
+            / str(year)
             / (
                 f"{self.organisation}_"
                 f"{self.data_source}_"
-                f"{variable}-sn_"
+                f"{variable}_daily_"
                 f"{year}_"
                 f"{self.domain}_0p25grid.nc"
             )
@@ -76,7 +76,7 @@ class DataPaths:
     def fire_season_indices(self,variable,year):
         return (
             self.paths["fire_season_indices_dir"]
-            / variable
+            / str(year)
             / (
                 f"{self.organisation}_"
                 f"{self.data_source}_"

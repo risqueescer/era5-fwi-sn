@@ -317,15 +317,31 @@ def run_fwi(config,years, year_init,utc_list):
         isi_path = paths.fwi_sn_daily('ISI', year)
         bui_path = paths.fwi_sn_daily('BUI', year)
         dsr_path = paths.fwi_sn_daily('DSR', year)
-        dsrc_path = paths.fwi_sn_daily('DSRc', year)
-        dcf_path = paths.fwi_sn_daily('DCf', year)
         
         # Fire Season Indices
+        dsrc_path = paths.fire_season_indices('DSRc', year)
+        dcf_path = paths.fire_season_indices('DCf', year)
         onset_path = paths.fire_season_indices('Onset', year)
         winter_onset_path = paths.fire_season_indices('WinterOnset', year)
         winter_rain_path = paths.fire_season_indices('WinterRain', year)
         fsl_path = paths.fire_season_indices('FSL', year)
         
+        # Out dir fwi & fire_season_indices:
+        fwi_path.parent.mkdir(parents=True, exist_ok=True)
+        ffmc_path.parent.mkdir(parents=True, exist_ok=True)
+        dmc_path.parent.mkdir(parents=True, exist_ok=True)
+        dc_path.parent.mkdir(parents=True, exist_ok=True)
+        isi_path.parent.mkdir(parents=True, exist_ok=True)
+        bui_path.parent.mkdir(parents=True, exist_ok=True)
+        dsr_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        dsrc_path.parent.mkdir(parents=True, exist_ok=True)
+        dcf_path.parent.mkdir(parents=True, exist_ok=True)
+        onset_path.parent.mkdir(parents=True, exist_ok=True)
+        winter_onset_path.parent.mkdir(parents=True, exist_ok=True)
+        winter_rain_path.parent.mkdir(parents=True, exist_ok=True)
+        fsl_path.parent.mkdir(parents=True, exist_ok=True)
+
         # Save datasets to NetCDF files
         # FWI components
         fwi = io.format_and_save(

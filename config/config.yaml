@@ -20,7 +20,6 @@ paths:
   fwi_inputs_dir: output/fwi_inputs
   fire_season_indices_dir: output/fire_season_indices
   fwi_sn_outputs_dir: output/fwi-sn
-
   
 # CDS
 cds:
@@ -51,4 +50,3 @@ fwi:
   year_end: 2025
   onset_method: TS
   snow_threshold: 0.01
-  temperature_threshold: 5.0

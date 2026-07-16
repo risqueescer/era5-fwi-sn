@@ -20,36 +20,35 @@ class UTCDailyTotalPrecip:
     # -----------------------------------------------------
     # DTP CORE COMPUTATION
     # -----------------------------------------------------
+    
     def compute_dtp(self, prcp, utc, last_24h_day):
         import pandas as pd
-        year = int(prcp[0].time.dt.year)
-        month = int(prcp[0].time.dt.month)
-        #days =  pd.date_range(str(year)+'-'+str('{:02d}'.format(month))+'-01T'+str(utc), periods=last_24h_day, freq='D')
-        days =  pd.date_range(str(year)+'-'+str('{:02d}'.format(month))+'-01T'+'00:00', periods=last_24h_day, freq='D')
-
-
+    
         h1 = list(range(0, utc + 1))
         h2 = list(range(utc + 1, 24))
-
+    
+        # Unique calendar days present, in chronological order  avoids the
+        # day-of-month collision when `prcp` spans multiple months.
+        unique_days = prcp.time.dt.floor("D").to_index().unique()[:last_24h_day]
+    
         out = []
-
-        for d in range(1, last_24h_day + 1):
-
-            day = prcp.sel(time=prcp.time.dt.day == d)
-            prev = prcp.sel(time=prcp.time.dt.day == d - 1)
-
-            tmp1 = day.sel(time=day.time.dt.hour.isin(h1)).sum(dim="time",min_count=1)
-
-            if d == 1:
-                #tmp2 = 0
-                tmp2 = xr.where(tmp1.notnull(), 0, np.nan)
+    
+        for date in unique_days:
+            day = prcp.sel(time=prcp.time.dt.floor("D") == date)
+            tmp1 = day.sel(time=day.time.dt.hour.isin(h1)).sum(dim="time", min_count=1)
+            
+            prev_date = date - pd.Timedelta(days=1)
+            
+            if prev_date in unique_days:
+                prev = prcp.sel(time=prcp.time.dt.floor("D") == prev_date)
+                tmp2 = prev.sel(time=prev.time.dt.hour.isin(h2)).sum(dim="time", min_count=1)
             else:
-                tmp2 = prev.sel(time=prev.time.dt.hour.isin(h2)).sum(dim="time",min_count=1)
-
+                tmp2 = xr.where(tmp1.notnull(), 0, np.nan)
+    
             out.append(tmp1 + tmp2)
-        
+    
         dtp_da = xr.concat(out, dim="time")
-        dtp_da['time'] = days
+        dtp_da["time"] = unique_days
         return dtp_da
 
     # -----------------------------------------------------

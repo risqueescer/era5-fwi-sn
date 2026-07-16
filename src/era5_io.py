@@ -14,6 +14,9 @@ class ERA5IO:
         """
         # placeholder for your existing logic
         # (keep original behavior if you had cleaning steps)
+        ds = ds.assign_coords(
+            lon=((ds.lon + 180) % 360) - 180
+        )
         return ds
 
 
@@ -41,13 +44,6 @@ class ERA5IO:
     # -----------------------------------------------------
     # STANDARDIZATION FOR DATABASE
     # -----------------------------------------------------
-
-    def format_longitudes(self,ds):
-        # lon: longitudes east of 179 degrees need to be negative
-        ds = ds.assign_coords(
-            lon=((ds.lon + 180) % 360) - 180
-        )
-        return (ds)
 
     def format_and_save(self,
         ds,

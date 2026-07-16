@@ -28,13 +28,12 @@ class SolarNoonValue:
 
     Returns
     -------
-    dict
-        {
-            "T2m": Dataset,
-            "RH": Dataset,
-            "WS": Dataset,
-            "DTP": Dataset
-        }
+    xarray dataset
+    Dataset with multiple variables:
+        "T2m"
+        "RH"
+        "WS"
+        "DTP"
     """
 
     def interpolate(

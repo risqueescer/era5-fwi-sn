@@ -40,12 +40,16 @@ def main():
     # List of utc hours to keep for solar noon method
         # For Canada: from 15 to 22
     utc_list = config["utc_list"]
+
+    # Run Pipeline
     ERA5Download(config, client).download_all(years=years)
 
     run_masking(config=config,years=years)
 
     run_derived_vars(config=config,years=years)
     
+    # Run for all years
+    # results is for last computed year only
     results = run_fwi(
         config=config,
         years=years, 
@@ -54,8 +58,6 @@ def main():
         )
 
     print("FWI completed")
-
-
 
 if __name__ == "__main__":
     main()
