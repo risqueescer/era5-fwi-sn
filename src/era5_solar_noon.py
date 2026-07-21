@@ -46,6 +46,7 @@ class SolarNoonValue:
         lons,
         dates
     ):
+        
         # Coordinates
         # lon: longitudes east of 179 degrees need to be negative
         ndays = len(dates)
@@ -90,6 +91,7 @@ class SolarNoonValue:
         ws = np.full((ndays, ny, nx), np.nan)
         dtp = np.full((ndays, ny, nx), np.nan)
 
+
         # -------------------------------------------------
         # Interpolation
         # -------------------------------------------------
@@ -101,7 +103,6 @@ class SolarNoonValue:
                 if np.isnan(t2m_hour[0][0, i, j]):
                     continue
                 
-                #sun = daylight.Sunclock(lats[i], lons[j])
                 observer = Observer(latitude=lats[i], longitude=lons[j])
 
                 for d, date in enumerate(dates):

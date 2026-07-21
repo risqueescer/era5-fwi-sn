@@ -14,10 +14,7 @@ VAR_MAP = {
     "tp": "PRCP",
     "u10": "UU",
     "v10": "VV",
-    "sf": "SF",
-    "rsn": "RSN",
-    "sp": "SP",
-    "ssr": "SSR",
+    "rsn": "RSN"
 }
 
 

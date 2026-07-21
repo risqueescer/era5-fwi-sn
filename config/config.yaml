@@ -2,7 +2,7 @@
 organisation: Risque-ESCER
 data_source: ERA5
 spatial_domain: Can
-grid_resolution: 0.25,
+grid_resolution: 0.25
 grid_type: "Original grid"
 
 # Directories

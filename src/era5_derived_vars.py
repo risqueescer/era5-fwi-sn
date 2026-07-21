@@ -47,7 +47,7 @@ class DerivedVars:
         ds = rh.to_dataset(name="RH")
         ds["RH"].attrs = {
             "units": "%",
-            "long_name": "Relative Humidity"
+            "long_name": "Relative humidity"
         }
         t2m_ds.close()
         d2m_ds.close()
@@ -82,7 +82,7 @@ class DerivedVars:
         ds = sd.to_dataset(name="SD")
         ds["SD"].attrs = {
             "units": "m",
-            "long_name": "Estimated Snow Depth"
+            "long_name": "Estimated snow depth"
         }
 
         swe_ds.close()
@@ -108,8 +108,8 @@ class DerivedVars:
 
         ds = ws.to_dataset(name="WS")
         ds["WS"].attrs = {
-            "units": "km h**-1",
-            "long_name": "Wind Speed"
+            "units": "km h-1",
+            "long_name": "Wind speed"
         }
 
         uu_ds.close()
@@ -140,7 +140,8 @@ class DerivedVars:
         ds = wd.to_dataset(name="WD")
         ds["WD"].attrs = {
             "units": "degrees",
-            "long_name": "Wind Direction"
+            "long_name": "Wind direction",
+            "standard_name": "wind_from_direction",
         }
         
         uu_ds.close()

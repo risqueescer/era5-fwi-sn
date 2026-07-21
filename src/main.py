@@ -32,24 +32,24 @@ def main():
     client = create_cds_client(
         config["cds"]["credentials"]
     )
+    
     year_init = args.year_init or config["fwi"]["year_init"]
     year_start = args.year_start or config["fwi"]["year_start"]
     year_end = args.year_end or config["fwi"]["year_end"]
     years = range(year_start,year_end+1)
-    
     # List of utc hours to keep for solar noon method
         # For Canada: from 15 to 22
     utc_list = config["utc_list"]
-
+    
     # Run Pipeline
-    ERA5Download(config, client).download_all(years=years)
 
+    ERA5Download(config, client).download_all(years=years)
+    
     run_masking(config=config,years=years)
 
     run_derived_vars(config=config,years=years)
     
-    # Run for all years
-    # results is for last computed year only
+    # Results for last computed year 
     results = run_fwi(
         config=config,
         years=years, 
@@ -58,6 +58,8 @@ def main():
         )
 
     print("FWI completed")
+
+
 
 if __name__ == "__main__":
     main()

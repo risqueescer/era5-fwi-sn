@@ -24,13 +24,13 @@ def daily_mean_snow_depth(sd_files,swe_files):
     if len(missing) == 0:
         sd_ds = xr.open_mfdataset(sd_files, combine="by_coords")
         # convert from cm to meter
-        sd_ds["SD"] = sd_ds["SD"] #/ 100.0  # cm → m
+        sd_ds["SD"] = sd_ds["SD"] 
     else:
         print("No SD data, using SWE instead")
-        SNOW_DENSITY = 100  # kg/m3 (assumption)
+        SNOW_DENSITY = 100  
         
         swe_ds = xr.open_mfdataset(swe_files, combine="by_coords")
-        swe = swe_ds["SWE"] #/ 1000.0  # mm → m
+        swe = swe_ds["SWE"] 
         sd = swe * (1000 / SNOW_DENSITY)
         sd_ds = sd.to_dataset(name="SD")
     
@@ -39,8 +39,9 @@ def daily_mean_snow_depth(sd_files,swe_files):
     return (sd_dmean)
 
 def snow_condition(sd_dmean):
-    sd_JF = sd_dmean.sel(time=sd_dmean.time.dt.month.isin([1,2])) # Only keep snow for Jan + Feb
-    #sd_cond_JF = xr.where(sd_JF >= 0.10,1,0)# mask sd_JF where snow < 0.10 m (condition for Onset calculation)
+    # Only keep snow for Jan + Feb
+    sd_JF = sd_dmean.sel(time=sd_dmean.time.dt.month.isin([1,2])) 
+    # mask sd_JF where snow < 0.10 m (condition for Onset calculation)
     sd_cond_JF = xr.where(sd_JF >= 0.10, 1, 0).where(~np.isnan(sd_JF))
     return (sd_cond_JF)
 
@@ -252,7 +253,7 @@ def run_fwi(config,years, year_init,utc_list):
         winter_rain_ds = xr.Dataset(coords = {'lat': (['lat'], lats),'lon': (['lon'], lons)})
         winter_rain_ds["WinterRain"] = (['lat', 'lon'],  winter_rain)
         
-        # Format and save Fire Season Indices datasets
+        # Format and save Fire season indices
         onset_path = paths.fire_season_indices('Onset', year)
         winter_onset_path = paths.fire_season_indices('WinterOnset', year)
         winter_rain_path = paths.fire_season_indices('WinterRain', year)
@@ -262,8 +263,7 @@ def run_fwi(config,years, year_init,utc_list):
         winter_onset_path.parent.mkdir(parents=True, exist_ok=True)
         winter_rain_path.parent.mkdir(parents=True, exist_ok=True)
         fsl_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Fire Season Indices
+        
         onset_ds = io.format_and_save(
             ds=onset_ds,
             variable_raw="Onset",
@@ -300,7 +300,8 @@ def run_fwi(config,years, year_init,utc_list):
             out_path=fsl_path,
             save_netcdf_func=save_netcdf,
         )
-
+        
+    
         print("STEP 2: FWI")
         
         # Read input values at solar noon
@@ -321,7 +322,7 @@ def run_fwi(config,years, year_init,utc_list):
         dtp_da = solar_noon_ds["DTP"]
     
         print("--> Computing FWI...") 
-        fwi, ffmc, dmc, dc, isi, bui, dsr, dsrc, dcf = compute_fwi(
+        fwi_ds, ffmc_ds, dmc_ds, dc_ds, isi_ds, bui_ds, dsr_ds, dsrc_ds, dcf_ds = compute_fwi(
     
             t2m=t2m_da.values,
     
@@ -376,6 +377,7 @@ def run_fwi(config,years, year_init,utc_list):
         dsrc_path = paths.fire_season_indices('DSRc', year)
         dcf_path = paths.fire_season_indices('DCf', year)
         
+        
         # Out dir fwi & fire_season_indices:
         fwi_path.parent.mkdir(parents=True, exist_ok=True)
         ffmc_path.parent.mkdir(parents=True, exist_ok=True)
@@ -384,7 +386,7 @@ def run_fwi(config,years, year_init,utc_list):
         isi_path.parent.mkdir(parents=True, exist_ok=True)
         bui_path.parent.mkdir(parents=True, exist_ok=True)
         dsr_path.parent.mkdir(parents=True, exist_ok=True)
-        
+        # Fire Season Indices
         dsrc_path.parent.mkdir(parents=True, exist_ok=True)
         dcf_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -472,6 +474,23 @@ def run_fwi(config,years, year_init,utc_list):
             out_path=dcf_path,
             save_netcdf_func=save_netcdf,
         )
+
+        # -------------------------------------------------
+        # CLOSE OPEN DATASETS (avoid file-handle buildup over long runs)
+        # -------------------------------------------------
+        h_t2m_ds.close()
+        h_rh_ds.close()
+        h_ws_ds.close()
+        h_prcp_ds.close()
+
+        if dcf_py_available:
+            dcf_py_ds.close()
+
+        if wonset_py_available:
+            wonset_py_ds.close()
+
+        if prcp_py_available:
+            h_prcp_ds_py.close()
     
     return {year:{
         "FWI": fwi_ds,

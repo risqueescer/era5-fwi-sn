@@ -10,14 +10,6 @@ class ERA5Download:
     """
     Download hourly ERA5 single-level variables from CDS.
 
-    Example
-    -------
-    downloader = ERA5Download(
-        output_dir="./data",
-        area=[88, 200, 38, 320]
-    )
-
-    ERA5download.download_all()
     """
 
     VARIABLES = {

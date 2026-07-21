@@ -32,7 +32,7 @@ era5-fwi-sn/
 ├── shp/                             # Shapefile used to mask ERA5 to the Canadian domain
 │   └── gpr_limites_canada_wgs84.shp
 │
-│├── output/                           # Output data directories
+├── output/                          # Output data directories
 │   ├── cds_era5/
 │   ├── masked/
 │   ├── derived_vars/
@@ -45,7 +45,7 @@ era5-fwi-sn/
 ## Features
 - Downloads hourly ERA5 single-level variables (2 m temperature, dewpoint, precipitation, snow depth/density, wind components) from the Copernicus Climate Data Store (CDS).
 - Masks the data to the Canadian domain using a shapefile and `regionmask`.
-- Computes derived hourly variables: relative humidity, effective rainfall, snow depth, wind speed and direction.
+- Computes derived hourly variables: relative humidity, snow depth, wind speed and direction.
 - Interpolates inputs to local solar noon for each grid cell using `astral`, so FWI is computed at physically consistent local times across the whole domain.
 - Computes the full Canadian FWI System (FFMC, DMC, DC, ISI, BUI, FWI), daily severity rating (DSR/DSRc), and fire-season phenology indices (Onset, Winter Onset, Fire Season Length, Winter Rain), including DC overwintering between years.
 - Pipeline is resumable: years/months already fully processed are skipped on re-run, except the current year (per the CDS ~6-day data lag), which is always refreshed.
@@ -53,6 +53,7 @@ era5-fwi-sn/
 ## Prerequisites
 - [Miniconda or Anaconda](https://docs.conda.io/en/latest/miniconda.html) (the pipeline uses Python 3.9, pinned via `environment.yml`).
 - A free [Copernicus Climate Data Store (CDS)](https://cds.climate.copernicus.eu) account, needed to download ERA5 data.
+- The Canada boundary shapefile (`shp/gpr_limites_canada_wgs84.shp`) used for masking.
 
 ### Setting up CDS API access
 1. Create an account at https://cds.climate.copernicus.eu and accept the ERA5 dataset license.
@@ -79,25 +80,28 @@ era5-fwi-sn/
 ## How to run
 
 ### Reproduce the paper
-Runs the full year range defined in `config/config.yaml` (`fwi.year_init` to `fwi.year_end`):
+Runs the full year range defined in `config/config.yaml` (`fwi.year_start` to `fwi.year_end`):
 ```bash
 python src/main.py
 ```
+### Understanding the year parameters
+- `--year-start` / `--year-end` control which years are downloaded/processed in this run (the batch range).
+- `--year-init` is a separate, fixed physics parameter: it marks the first year of the whole historical series, for which there is no prior year to carry over a Drought Code (DC) value from ("overwintering"). This should normally stay at its `config.yaml` value (`1950`) and not be changed per-run — it does not mean "start of this run."
 
 ### Single year / partial range
-Override the year range from the command line without editing the config file:
+Override the batch range from the command line without editing the config file:
 ```bash
 python src/main.py --year-init 1950 --year-start 1950 --year-end 1950
 ```
 Note: FWI relies on the Drought Code (DC) carried over from the previous year ("overwintering"). If the previous year hasn't already been processed, the pipeline falls back to the standard DC spin-up values for that run rather than failing — useful for quick tests, but for scientifically valid output over a partial range, process years sequentially from `fwi.year_init` onward at least once.
 
 ### Custom configuration
-All region, method, and threshold choices are controlled by `config/config.yaml` — there is no separate `--config` flag; edit the file directly, e.g.:
+Region, onset method, and snow threshold are controlled by `config/config.yaml` — there is no separate `--config` flag; edit the file directly, e.g.:
 ```yaml
 spatial_domain: Can
 fwi:
   onset_method: TS      # T | TS | TS0 | ToS
-  snow_threshold: 0.01 # Value to use for snow depth = 0
+  snow_threshold: 0.01 # snow depth (m) below which a cell is considered snow-free
 ```
 Then run as usual:
 ```bash
@@ -108,7 +112,7 @@ python src/main.py
 Distributed under the MIT License. See the `LICENSE` file in the root directory for more details.
 
 ## How to cite
-Code: https://doi.org/10.5281/zenodo.21398765
+Code Reference: Benoît, C. and Durand, J.: era5-fwi-sn v1.0.0, Zenodo [code], https://doi.org/10.5281/zenodo.21398765, 2026.
 
 Dataset: see **Data Availability** below.
 
